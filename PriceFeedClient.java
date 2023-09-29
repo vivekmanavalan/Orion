@@ -17,6 +17,13 @@ public class PriceFeedClient {
     private static double cashBalance = 1000;
     private static double portfolio = 0;
 
+    private static double lastBuy = 0;
+    private static double lastSell = 0;
+
+    private static double avgBuyPrice = 0;
+
+    private static int sellSkipCount = 0;
+
 
     public static void main(String[] args) {
         String serverAddress = "localhost"; // Change this to the server's address
@@ -25,7 +32,7 @@ public class PriceFeedClient {
         // Queue and sum for the short moving average (e.g., 10 periods)
         Queue<Double> shortWindow = new LinkedList<>();
         double shortSum = 0.0;
-        int shortWindowSize = 10;
+        int shortWindowSize = 20;
 
         // Queue and sum for the long moving average (e.g., 50 periods)
         Queue<Double> longWindow = new LinkedList<>();
@@ -63,6 +70,18 @@ public class PriceFeedClient {
                     longSum -= longWindow.poll();
                 }
 
+
+                if (sellSkipCount > 3 && price > avgBuyPrice) {
+                    System.out.println("special sell triggered!!");
+                    sell(price, true);
+                }
+
+                if (sellSkipCount > 20) {
+                    System.out.println("special sell triggered!!");
+                    sell(price, true);
+                }
+
+
                 double shortMovingAverage = 0;
                 // Calculate and print the moving averages
                 if (shortWindow.size() == shortWindowSize) {
@@ -91,7 +110,7 @@ public class PriceFeedClient {
                 }
 
                 if (!prevState && state) {
-                    sell(price);
+                    sell(price, false);
                 }
             }
         } catch (IOException e) {
@@ -113,20 +132,39 @@ public class PriceFeedClient {
 
         int qty = (int) (cashBalance / price);
 
+        if (qty <= 0) {
+            return;
+        }
+
+        if (avgBuyPrice == 0) {
+            avgBuyPrice = price;
+        } else {
+            avgBuyPrice = ((avgBuyPrice * portfolio) + (price * qty) ) / (portfolio + qty);
+        }
+
         double totValue = qty * price;
 
         cashBalance = cashBalance - totValue;
         portfolio = portfolio + qty;
+        lastBuy = price;
 
 
-        System.out.println("buy:" + price + " cash balance " + cashBalance + " portfolio : " + portfolio);
+        System.out.println("buy:" + price + " qty:" + qty + " cash balance " + cashBalance + " portfolio : " + portfolio + " avgBuyPrice: " + avgBuyPrice);
     }
 
-    private static void sell(double price) {
+    private static void sell(double price, boolean forcedSell) {
 
         if (portfolio <= 0){
             return;
         }
+
+        if (!forcedSell && avgBuyPrice > price) {
+            sellSkipCount++;
+            System.out.println("sell skipped for : " + price + " sell skipped count : " + sellSkipCount);
+            return;
+        }
+
+        sellSkipCount = 0;
 
         double totValue = portfolio * price;
         cashBalance = cashBalance + totValue;

@@ -13,6 +13,8 @@ import javax.json.JsonObjectBuilder;
 
 public class PriceFeedServer {
 
+    static double lastPrice = 200.0;
+
     public static void main(String[] args) {
         int port = 12345; // Port for the server
         try (ServerSocket serverSocket = new ServerSocket(port)) {
@@ -42,9 +44,12 @@ public class PriceFeedServer {
     }
 
     private static String generatePriceFeed() {
+
         String[] symbols = {"AAPL", "GOOGL", "MSFT", "AMZN"};
+
         String symbol = symbols[new Random().nextInt(symbols.length)];
-        double lastPrice = 100 + (Math.random() * 20);
+
+        double lastPrice = getLastPrice();
         double bidPrice = lastPrice - 0.05;
         double askPrice = lastPrice + 0.05;
         int volume = new Random().nextInt(10000);
@@ -63,5 +68,16 @@ public class PriceFeedServer {
                 .add("volume", volume);
 
         return builder.build().toString();
+    }
+
+    private static double getLastPrice() {
+
+        double var = (Math.random() - 0.5) * 2;
+        double coef = Math.random() * 10;
+
+        lastPrice = lastPrice + var * coef;
+        System.out.println(lastPrice);
+        return lastPrice;
+
     }
 }
